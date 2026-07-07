@@ -9,14 +9,22 @@ from datetime import datetime, date
 # Constants
 #--------------------------
 
+# File Settings
+WORKBOOK_FOLDER = os.path.expanduser("~/OneDrive/Active")
 WORKBOOK_NAME = "Financial Dashboard.xlsx"
+
+# Worksheet Names
 DASHBOARD_SHEET = "Dashboard"
 MARKET_SHEET = "Market Data"
 HISTORY_SHEET = "History"
 ACTIVITY_SHEET = "Activity Log"
+
+# Dashboard Colors
 GREEN = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
 YELLOW = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
 RED = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+
+# Dashboard Thresholds
 GREEN_THRESHOLD = -0.01  # Within 1% of record high
 YELLOW_THRESHOLD = -0.03  # Within 3% of record high
 
@@ -37,11 +45,10 @@ MARKETS = {
 }
 
 def open_workbook():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    file = os.path.join(base_dir,WORKBOOK_NAME)
-
+    file = os.path.join(WORKBOOK_FOLDER, WORKBOOK_NAME)
+    if not os.path.exists(file):
+        raise FileNotFoundError(f"Workbook not found at {file}. Please ensure the file exists.")
     wb = load_workbook(file)
-
     return wb, file
 
 def get_dashboard_sheet(wb):
