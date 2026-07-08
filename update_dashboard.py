@@ -162,28 +162,31 @@ def save_workbook(wb, file):
     wb.save(file)
 
 def main():
-    wb, file = open_workbook()
+    try:
+         wb, file = open_workbook()
 
-    ws_market = get_market_sheet(wb)
-    ws_dashboard = get_dashboard_sheet(wb)
-    ws_history = get_history_sheet(wb)
-    ws_log = get_activity_sheet(wb)
+         ws_market = get_market_sheet(wb)
+         ws_dashboard = get_dashboard_sheet(wb)
+         ws_history = get_history_sheet(wb)
+         ws_log = get_activity_sheet(wb)
 
-    log_activity(ws_log, "Starting updated")
+         log_activity(ws_log, "Starting updated")
 
-    values = update_market_sheet(ws_market)
-    log_activity(ws_log, "Market data updated")
+         values = update_market_sheet(ws_market)
+         log_activity(ws_log, "Market data updated")
 
-    update_history(ws_history, values)
-    log_activity(ws_log, "History updated")
+         update_history(ws_history, values)
+         log_activity(ws_log, "History updated")
 
-    update_dashboard(ws_dashboard, values)
-    log_activity(ws_log, "Dashboard updated")
+         update_dashboard(ws_dashboard, values)
+         log_activity(ws_log, "Dashboard updated")
 
-    log_activity(ws_log, "Workbook saved")
-    save_workbook(wb, file)
+         log_activity(ws_log, "Workbook saved")
+         save_workbook(wb, file)
 
-    print("Dashboard updated successfully.")
+         print("Dashboard updated successfully.")
+    except Exception as e:
+         print(f"Error: {e}")
 
 if __name__ == "__main__":
     main()
