@@ -18,6 +18,8 @@ DASHBOARD_SHEET = "Dashboard"
 MARKET_SHEET = "Market Data"
 HISTORY_SHEET = "History"
 ACTIVITY_SHEET = "Activity Log"
+HOLDINGS_SHEET = "Holdings"
+TSP_PRICE_SHEET = "TSP Prices"
 
 # Dashboard Colors
 GREEN = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
@@ -28,7 +30,7 @@ RED = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
 GREEN_THRESHOLD = -0.01  # Within 1% of record high
 YELLOW_THRESHOLD = -0.03  # Within 3% of record high
 
-
+# Markets 
 MARKETS = {
    "Dow": {
       "ticker": "^DJI",
@@ -44,6 +46,22 @@ MARKETS = {
    }
 }
 
+# Dashboard Cells Mapping
+DASHBOARD_CELLS = {
+   "Dow": {
+      "price": "B6",
+      "status": "C6"
+   },
+   "S&P 500": {
+      "price": "B7",
+      "status": "C7"
+   },
+   "Nasdaq": {
+      "price": "B8",
+      "status": "C8"
+   }
+}
+
 def open_workbook():
     file = os.path.join(WORKBOOK_FOLDER, WORKBOOK_NAME)
     if not os.path.exists(file):
@@ -51,11 +69,11 @@ def open_workbook():
     wb = load_workbook(file)
     return wb, file
 
-def get_dashboard_sheet(wb):
-    return wb[DASHBOARD_SHEET]
-
 def get_market_sheet(wb):
     return wb[MARKET_SHEET]
+
+def get_dashboard_sheet(wb):
+    return wb[DASHBOARD_SHEET]
 
 def get_history_sheet(wb):
     for name in wb.sheetnames:
@@ -65,7 +83,10 @@ def get_history_sheet(wb):
 
 def get_activity_sheet(wb):
     return wb[ACTIVITY_SHEET]
-    
+
+def get_holdings_sheet(wb):
+    return wb[HOLDINGS_SHEET]
+
 #--------------------------
 # Update Market Data
 #--------------------------
@@ -73,22 +94,16 @@ def get_activity_sheet(wb):
 def update_dashboard(ws_dashboard, values):
     ws_dashboard["F2"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    ws_dashboard["B6"] = values["Dow"]["price"]
-    ws_dashboard["B7"] = values["S&P 500"]["price"]
-    ws_dashboard["B8"] = values["Nasdaq"]["price"]
+    for market, cells in DASHBOARD_CELLS.items():
+        ws_dashboard[cells["price"]] = values[market]["price"]
+        ws_dashboard[cells["status"]] = values[market]["pct_from_high"]
+        ws_dashboard[cells["status"]].number_format = "0.00%"
 
-    ws_dashboard["C6"] = values["Dow"]["pct_from_high"]
-    ws_dashboard["C6"].number_format = "0.00%"
-
-    ws_dashboard["C7"] = values["S&P 500"]["pct_from_high"]
-    ws_dashboard["C7"].number_format = "0.00%"
-
-    ws_dashboard["C8"] = values["Nasdaq"]["pct_from_high"]
-    ws_dashboard["C8"].number_format = "0.00%"
-
-    apply_color(ws_dashboard,"C6", values["Dow"]["pct_from_high"])
-    apply_color(ws_dashboard,"C7", values["S&P 500"]["pct_from_high"])
-    apply_color(ws_dashboard,"C8", values["Nasdaq"]["pct_from_high"])
+        apply_color(
+            ws_dashboard, 
+            cells["status"],
+            values[market]["pct_from_high"]
+        )
 
 
 def apply_color(ws, cell, pct):
@@ -122,6 +137,7 @@ def update_market_sheet(ws_market):
       record_close = round(close.max(), 2)
       record_close_date = close.idxmax().date()
       record_high = high.max()
+      pct_from_high = (current / record_high) - 1
 
 
       # Prices
@@ -133,13 +149,13 @@ def update_market_sheet(ws_market):
       ws_market[f"D{row}"].number_format = "mmm d, yyyy"
 
       # Percent from high (formatted properly)
-      ws_market[f"E{row}"] = (current / record_high) - 1
+      ws_market[f"E{row}"] = pct_from_high
       ws_market[f"E{row}"].number_format = "0.00%"
 
       # Save for history log
       values[name] = {
           "price": current,
-          "pct_from_high": (current / record_high) - 1
+          "pct_from_high": pct_from_high
        }
    return values
 
@@ -155,8 +171,36 @@ def update_history(ws_history, values):
         values["S&P 500"]["price"],
         values["Nasdaq"]["price"]
     ]
-    
+
     ws_history.append(row)
+
+def update_holdings (ws_holdings):
+   for row in range(2, ws_holdings.max_row + 1):
+
+       symbol = ws_holdings[f"B{row}"].value
+       shares = ws_holdings[f"D{row}"].value
+       source = ws_holdings[f"G{row}"].value 
+
+       source = str(ws_holdings[f"G{row}"].value).strip().lower()
+
+       if source == "yahoo":
+            try:
+                data = yf.Ticker(symbol).history(period="1d")
+            
+                if data.empty:
+                    print (f"No data for {symbol}")
+                    continue
+
+                price = round(data['Close'].iloc[-1], 2)
+
+                ws_holdings[f"E{row}"] = price
+
+                if shares:
+                    ws_holdings[f"F{row}"] = round(price * shares, 2)
+ 
+            except Exception as e:
+                print(f"{symbol}: {e}")
+
 
 def save_workbook(wb, file):
     wb.save(file)
@@ -169,11 +213,15 @@ def main():
          ws_dashboard = get_dashboard_sheet(wb)
          ws_history = get_history_sheet(wb)
          ws_log = get_activity_sheet(wb)
+         ws_holdings = get_holdings_sheet(wb)
 
-         log_activity(ws_log, "Starting updated")
+         log_activity(ws_log, "Starting update")
 
          values = update_market_sheet(ws_market)
          log_activity(ws_log, "Market data updated")
+
+         update_holdings(ws_holdings)
+         log_activity(ws_log, "Holdings updated")
 
          update_history(ws_history, values)
          log_activity(ws_log, "History updated")
