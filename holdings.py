@@ -1,4 +1,5 @@
 from config import HOLDINGS_COL
+from markets import get_yahoo_price
 
 def calculate_account_totals(ws_holdings):
     account_totals = {}
@@ -159,3 +160,42 @@ def calculate_portfolio_total(account_totals):
 
 def get_account_names(account_totals):
     return list(account_totals.keys())
+
+def update_holdings (ws_holdings):
+   for row in range(2, ws_holdings.max_row + 1):
+       symbol = ws_holdings[f"{HOLDINGS_COL['symbol']}{row}"].value
+       if not symbol:
+              continue
+
+       shares = ws_holdings[f"{HOLDINGS_COL['shares']}{row}"].value or 0
+       shares = float(str(shares).replace(",", "").replace("$", ""))
+
+       source = str(ws_holdings[f"{HOLDINGS_COL['source']}{row}"].value).strip().lower()
+
+       if source == "yahoo":
+          price = get_yahoo_price(symbol)
+
+          if price is not None:
+            ws_holdings[f"{HOLDINGS_COL['price']}{row}"] = price
+
+       elif source in ("manual", "tsp"):
+          raw_price = ws_holdings[f"{HOLDINGS_COL['price']}{row}"].value
+
+          try:
+            price = float(
+               str(raw_price)
+               .replace("$", "")
+               .replace(",", "")
+              .strip()
+            )   
+          except (TypeError, ValueError):
+            raise ValueError(
+                f"Invalid price on holdings row {row}"
+                f"for symbol {symbol}: {raw_price!r}")
+       else: 
+            print(f"Unknown source '{source}' on row {row}")
+            continue
+
+       # Calculate Market Value for EVERY holding
+       if price is not None:
+            ws_holdings[f"{HOLDINGS_COL['market_value']}{row}"] = round(price * shares, 2)

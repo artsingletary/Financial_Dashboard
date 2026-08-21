@@ -1,3 +1,11 @@
+# config.py - settings, sheet_names, mappings, colors
+# workbook.py - opening, sheets, saving
+# markets.py - Yahoo market prices
+# holdings.py - holdings updates and portfolio calculations
+# dashboard.py - Dashboard Data and Dashboard updates
+# activity.py History and activity log updates
+# update_dashboard.py = main workflow only
+
 import os
 import yfinance as yf
 import traceback
@@ -23,7 +31,8 @@ from holdings import (
     calculate_largest_account,
     calculate_largest_holding,
     calculate_portfolio_total,
-    get_account_names
+    get_account_names,
+    update_holdings
 )
 
 from workbook import (
@@ -41,174 +50,8 @@ from dashboard import (update_dashboard,
                        apply_color
 )
 
-# Markets 
-MARKETS = {
-   "Dow": {
-      "ticker": "^DJI",
-      "row": 2
-   },
-   "S&P 500": {
-     "ticker": "^GSPC",
-       "row": 3
-   },
-   "Nasdaq": { 
-   "ticker": "^IXIC",
-   "row": 4
-   }
-}
-
-
-
-def log_activity(ws_log, action, status = "Success"):
-   ws_log.append([
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        action,
-        status
-    ])
-
-def update_market_sheet(ws_market):
-   values = {}
-
-   for name, info in MARKETS.items():
-      symbol = info["ticker"]
-      row = info["row"]
-      
-      #data = yf.Ticker(symbol).history(period="max")
-
-      ticker = yf.Ticker(symbol)
-
-      data = ticker.history(period="1d")
-
-      if not data.empty:
-          price = round(data['Close'].iloc[-1], 2)
-      else:
-          info = ticker.fast_info
-
-          if info and info.get('last_price') is not None:
-              price = round(info['last_price'], 2)
-          else:
-              print(f"No price available for {symbol}. Skipping.")
-              continue
-
-      close = data['Close']
-      high = data['High']
-
-      current = round(close.iloc[-1], 2)
-      record_close = round(close.max(), 2)
-      record_close_date = close.idxmax().date()
-      record_high = high.max()
-      pct_from_high = (current / record_high) - 1
-
-
-      # Prices
-      ws_market[f"B{row}"] = current
-      ws_market[f"C{row}"] = record_close
-
-      # Date 
-      ws_market[f"D{row}"] = record_close_date
-      ws_market[f"D{row}"].number_format = "mmm d, yyyy"
-
-      # Percent from high (formatted properly)
-      ws_market[f"E{row}"] = pct_from_high
-      ws_market[f"E{row}"].number_format = "0.00%"
-
-      # Save for history log
-      values[name] = {
-          "price": current,
-          "pct_from_high": pct_from_high
-       }
-   return values
-
-# --------------------------
-# Append to History Sheet
-#--------------------------
-
-def update_history(ws_history, values):
-
-    row = [
-        date.today(),
-        values["Dow"]["price"],
-        values["S&P 500"]["price"],
-        values["Nasdaq"]["price"]
-    ]
-
-    ws_history.append(row)
-
-def get_yahoo_price(symbol):
-    ticker = yf.Ticker(symbol.upper())
-
-    # Try fast_info first
-    try:
-        price = ticker.fast_info.get("lastPrice")
-        if price is not None:
-            return round(price, 2)
-    except Exception:
-        pass
-
-    # Try info (works for many mutual funds)
-    try:
-        info = ticker.info
-
-        for field in (
-            "regularMarketPrice",
-            "previousClose",
-            "navPrice",
-        ):
-            price = info.get(field)
-            if price is not None:
-                return round(price, 2)
-    except Exception:
-        pass
-
-    # Finally try history
-    try:
-        data = ticker.history(period="1d")
-        if not data.empty:
-            return round(data["Close"].iloc[-1], 2)
-    except Exception:
-        pass
-
-    return None
-
-def update_holdings (ws_holdings):
-   for row in range(2, ws_holdings.max_row + 1):
-
-       symbol = ws_holdings[f"{HOLDINGS_COL['symbol']}{row}"].value
-       if not symbol:
-              continue
-
-       shares = ws_holdings[f"{HOLDINGS_COL['shares']}{row}"].value or 0
-       shares = float(str(shares).replace(",", "").replace("$", ""))
-
-       source = str(ws_holdings[f"{HOLDINGS_COL['source']}{row}"].value).strip().lower()
-
-       if source == "yahoo":
-          price = get_yahoo_price(symbol)
-
-          if price is not None:
-            ws_holdings[f"{HOLDINGS_COL['price']}{row}"] = price
-
-       elif source in ("manual", "tsp"):
-          raw_price = ws_holdings[f"{HOLDINGS_COL['price']}{row}"].value
-
-          try:
-            price = float(
-               str(raw_price)
-               .replace("$", "")
-               .replace(",", "")
-              .strip()
-            )   
-          except (TypeError, ValueError):
-            raise ValueError(
-                f"Invalid price on holdings row {row}"
-                f"for symbol {symbol}: {raw_price!r}")
-       else: 
-            print(f"Unknown source '{source}' on row {row}")
-            continue
-
-       # Calculate Market Value for EVERY holding
-       if price is not None:
-            ws_holdings[f"{HOLDINGS_COL['market_value']}{row}"] = round(price * shares, 2)
+from markets import update_market_sheet
+from activity import log_activity, update_history
 
 def main():
     try:

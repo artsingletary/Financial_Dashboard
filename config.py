@@ -1,6 +1,7 @@
 import os
 from openpyxl.styles import PatternFill
 
+
 # File Settings
 WORKBOOK_FOLDER = os.path.expanduser("~/OneDrive/Active")
 WORKBOOK_NAME = "Financial Dashboard.xlsx"
@@ -56,3 +57,19 @@ YELLOW_THRESHOLD = -0.03  # Within 3% of record high
 GREEN = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
 YELLOW = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
 RED = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+
+# Markets 
+MARKETS = {
+   "Dow": {
+      "ticker": "^DJI",
+      "row": 2
+   },
+   "S&P 500": {
+     "ticker": "^GSPC",
+       "row": 3
+   },
+   "Nasdaq": { 
+   "ticker": "^IXIC",
+   "row": 4
+   }
+}
