@@ -4,34 +4,41 @@ from config import MARKETS
 def get_yahoo_price(symbol):
     ticker = yf.Ticker(symbol.upper())
 
-    # Try fast_info first
-    try:
-        price = ticker.fast_info.get("lastPrice")
-        if price is not None:
-            return round(price, 2)
-    except Exception:
-        pass
-
     # Try info (works for many mutual funds)
     try:
         info = ticker.info
 
-        for field in (
-            "regularMarketPrice",
-            "previousClose",
-            "navPrice",
-        ):
+        quote_type = (info.get("quoteType") or "").upper()
+
+        if quote_type == "MUTUALFUND":
+           fields = (
+               "navPrice",
+               "regularMarketPrice",
+               "previousClose",
+           )
+        else:
+            fields = (
+                "regularMarketPrice",
+                "previousClose",
+                "navPrice",
+            )
+
+        for field in fields:
             price = info.get(field)
+
             if price is not None:
-                return round(price, 2)
+                return float(price)
+
     except Exception:
         pass
 
     # Finally try history
     try:
         data = ticker.history(period="1d")
+
         if not data.empty:
-            return round(data["Close"].iloc[-1], 2)
+            return float(data["Close"].iloc[-1])
+
     except Exception:
         pass
 

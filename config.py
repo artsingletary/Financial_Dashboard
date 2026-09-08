@@ -29,7 +29,8 @@ HOLDINGS_COL = {
     "owner": "L",
     "tax_status": "M",
     "target": "N",
-    "notes": "O" 
+    "notes": "O", 
+    "raw_price": "P"
     }
 
 # Dashboard Cells Mapping

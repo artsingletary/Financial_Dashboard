@@ -1,5 +1,15 @@
 from config import HOLDINGS_COL
 from markets import get_yahoo_price
+from decimal import Decimal, ROUND_DOWN
+
+
+def yahoo_display_price(price):
+    return float(
+        Decimal(str(price)).quantize(
+            Decimal("0.01"),
+            rounding = ROUND_DOWN
+        )
+    )
 
 def calculate_account_totals(ws_holdings):
     account_totals = {}
@@ -161,41 +171,72 @@ def calculate_portfolio_total(account_totals):
 def get_account_names(account_totals):
     return list(account_totals.keys())
 
-def update_holdings (ws_holdings):
-   for row in range(2, ws_holdings.max_row + 1):
-       symbol = ws_holdings[f"{HOLDINGS_COL['symbol']}{row}"].value
-       if not symbol:
-              continue
+def update_holdings(ws_holdings):
+    for row in range(2, ws_holdings.max_row + 1):
+        symbol = ws_holdings[
+            f"{HOLDINGS_COL['symbol']}{row}"
+        ].value
 
-       shares = ws_holdings[f"{HOLDINGS_COL['shares']}{row}"].value or 0
-       shares = float(str(shares).replace(",", "").replace("$", ""))
+        if not symbol:
+            continue
 
-       source = str(ws_holdings[f"{HOLDINGS_COL['source']}{row}"].value).strip().lower()
+        shares = ws_holdings[
+            f"{HOLDINGS_COL['shares']}{row}"
+        ].value or 0
 
-       if source == "yahoo":
-          price = get_yahoo_price(symbol)
+        shares = float(
+            str(shares)
+            .replace(",", "")
+            .replace("$", "")
+        )
 
-          if price is not None:
-            ws_holdings[f"{HOLDINGS_COL['price']}{row}"] = price
+        source = str(
+            ws_holdings[
+                f"{HOLDINGS_COL['source']}{row}"
+            ].value
+        ).strip().lower()
 
-       elif source in ("manual", "tsp"):
-          raw_price = ws_holdings[f"{HOLDINGS_COL['price']}{row}"].value
+        if source == "yahoo":
+            price = get_yahoo_price(symbol)
 
-          try:
-            price = float(
-               str(raw_price)
-               .replace("$", "")
-               .replace(",", "")
-              .strip()
-            )   
-          except (TypeError, ValueError):
-            raise ValueError(
-                f"Invalid price on holdings row {row}"
-                f"for symbol {symbol}: {raw_price!r}")
-       else: 
+        elif source in ("manual", "tsp"):
+            raw_price_value = ws_holdings[
+                f"{HOLDINGS_COL['raw_price']}{row}"
+            ].value
+
+            if raw_price_value in (None, ""):
+                raw_price_value = ws_holdings[
+                    f"{HOLDINGS_COL['price']}{row}"
+                ].value
+
+            try:
+                price = float(
+                    str(raw_price_value)
+                    .replace("$", "")
+                    .replace(",", "")
+                    .strip()
+                )
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"Invalid price on holdings row {row} "
+                    f"for symbol {symbol}: {raw_price_value!r}"
+                )
+
+        else:
             print(f"Unknown source '{source}' on row {row}")
             continue
 
-       # Calculate Market Value for EVERY holding
-       if price is not None:
-            ws_holdings[f"{HOLDINGS_COL['market_value']}{row}"] = round(price * shares, 2)
+        if price is not None:
+            raw_price = float(price)
+
+            ws_holdings[
+                f"{HOLDINGS_COL['raw_price']}{row}"
+            ] = raw_price
+
+            ws_holdings[
+                f"{HOLDINGS_COL['price']}{row}"
+            ] = yahoo_display_price(raw_price)
+
+            ws_holdings[
+                f"{HOLDINGS_COL['market_value']}{row}"
+            ] = round(raw_price * shares, 2)

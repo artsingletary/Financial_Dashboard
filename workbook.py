@@ -1,4 +1,7 @@
 import os
+import shutil
+from datetime import datetime
+from pathlib import Path
 from openpyxl import load_workbook
 from config import (
     WORKBOOK_FOLDER,
@@ -37,4 +40,15 @@ def get_holdings_sheet(wb):
     return wb[HOLDINGS_SHEET]
 
 def save_workbook(wb, file):
-    wb.save(file)
+    source = Path(file)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    backup_file = source.with_name(
+         f"{source.stem}_before_refresh_{timestamp}{source.suffix}"
+    )
+
+    # Safe copy of the current workbook before updating it.
+    shutil.copy2(source, backup_file)
+
+    # Normal openpyxl save-no ZIP merging.
+    wb.save(source)

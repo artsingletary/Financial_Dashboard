@@ -79,7 +79,7 @@ def main():
          print(f"Total Taxable: {taxable_total}")
 
          tax_deferred_total = calculate_tax_deferred_totals(ws_holdings)
-         print(f"Total Tax Defferred: {tax_deferred_total}")
+         print(f"Total Tax Deferred: {tax_deferred_total}")
             
          roth_total = calculate_roth_totals(ws_holdings)
          print(f"Total Roth: {roth_total}")
