@@ -6,7 +6,7 @@
 # activity.py History and activity log updates
 # update_dashboard.py = main workflow only
 
-import os
+import subprocess
 import yfinance as yf
 import traceback
 from openpyxl import load_workbook
@@ -55,6 +55,7 @@ from activity import log_activity, update_history
 
 def main():
     try:
+         subprocess.run("clear")
          wb, file = open_workbook()
 
          ws_market = get_market_sheet(wb)

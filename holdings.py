@@ -233,9 +233,18 @@ def update_holdings(ws_holdings):
                 f"{HOLDINGS_COL['raw_price']}{row}"
             ] = raw_price
 
+            #ws_holdings[
+            #    f"{HOLDINGS_COL['price']}{row}"
+            #] = yahoo_display_price(raw_price)
+
+            if source == 'yahoo':
+                display_price = yahoo_display_price(raw_price)
+            else:
+                display_price = round(raw_price,2)
+
             ws_holdings[
                 f"{HOLDINGS_COL['price']}{row}"
-            ] = yahoo_display_price(raw_price)
+            ] = display_price
 
             ws_holdings[
                 f"{HOLDINGS_COL['market_value']}{row}"
